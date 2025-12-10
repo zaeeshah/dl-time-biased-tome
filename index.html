@@ -255,7 +255,7 @@
       Audio classification is a pivotal task in modern machine learning, supporting applications such as sound event detection, speech recognition, and music tagging. Recent progress in this space has been driven by transformer-based models, particularly Audio Spectrogram Transformers (ASTs) <a href="#ref1">[1]</a>, which adapt the Vision Transformer architecture to operate directly on spectrogram inputs. Separately, token merging <a href="#ref2">[2]</a> has emerged as a general technique for accelerating transformers by condensing similar tokens between layers, allowing models to process fewer tokens while preserving performance. In principle, token merging can be applied to ASTs to reduce computational cost.
     </p>
     <p>
-      However, spectrograms are fundamentally different from images, and these differences affect how and when tokens should be merged. In image classification, spatial transformations such as flipping or reordering regions often preserve semantic meaning. In audio, the temporal axis carries inherent directionality; events cannot be reversed or substantially shifted without altering their interpretation. As a result, directly applying image-based token merging to spectrograms may lead to merging temporally distant regions (e.g., multiple occurrences of silence) that are similar in content but should ideally remain separate for downstream classification. To address this, we introduce a time-aware bias into token merging to better align the technique with the structure of audio data and improve performance on AST-based classification tasks.
+      However, spectrograms are fundamentally different from images, and these differences affect how and when tokens should be merged. In image classification, spatial transformations such as flipping or reordering regions often preserve semantic meaning. However, in audio, the temporal axis carries inherent directionality; events cannot be reversed or substantially shifted without altering their interpretation. As a result, directly applying image-based token merging to spectrograms may lead to merging temporally distant regions that should remain distinct. To address this, we introduce a time-aware bias into token merging to better align the technique with the structure of audio data and improve performance on AST-based classification tasks.
     </p>
 
     <!-- Background -->
@@ -273,7 +273,7 @@
       A mel spectrogram is a time-frequency representation of audio in which the frequency axis is compressed using the mel scale, producing a compact 2D array whose structure closely resembles an image. This image-like format enables the direct application of vision-based architectures to audio data.
     </p>
     <p>
-      Audio Spectrogram Transformers (ASTs) <a href="#ref1">[1]</a> leverage this insight by treating spectrograms as images. The model converts an input spectrogram into a sequence of small overlapping patches, projects each patch into an embedding, and adds positional encodings before feeding the sequence into a standard Transformer encoder <a href="#ref4">[4]</a>. A learnable classification token aggregates global information across all patches, and its final embedding is passed through a linear layer to produce predictions. Because AST applies self-attention directly to spectrogram patches, it can model long-range time-frequency dependencies even in the earliest layers <a href="#ref5">[5]</a>, enabling strong performance across diverse audio tasks. This convolution-free architecture has become a standard baseline that many newer audio classification systems build upon.
+      Audio Spectrogram Transformers (ASTs) <a href="#ref1">[1]</a> leverage this insight by treating spectrograms as images. The model converts an input spectrogram into a sequence of small overlapping patches, projects each patch into an embedding, and adds positional encodings before feeding the sequence into a standard Transformer encoder, as illustrated in Figure 1. A learnable classification token aggregates global information across all patches, and its final embedding is passed through a linear layer to produce predictions. Because AST applies self-attention directly to spectrogram patches, it can model long-range time-frequency dependencies even in the earliest layers, enabling strong performance across diverse audio tasks. This convolution-free architecture has become a standard baseline that many newer audio classification systems build upon.
     </p>
 
     <h2>Token Merging for ViTs</h2>
@@ -289,7 +289,7 @@
       Because each global attention layer scales quadratically with the number of tokens, transformer models become increasingly expensive to run as input resolution or sequence length grows. Token merging <a href="#ref2">[2]</a> is a technique introduced to accelerate transformers by reducing the number of tokens passed through the network while preserving as much semantic information as possible.
     </p>
     <p>
-      After each transformer layer, a fixed number of tokens <span class="math-inline">r</span> are removed by merging them with their most similar neighbors, causing the sequence length to shrink gradually with depth. The transformer architecture already summarizes token information, giving us a natural similarity metric: we reuse the key matrix <span class="math-inline">K</span> from the standard QKV attention formulation and compute cosine similarity between token keys to determine how similar two tokens are.
+      After each transformer layer, a fixed number of tokens <span class="math-inline">r</span> are removed by merging them with their most similar neighbors, causing the sequence length to shrink gradually with depth. The transformer architecture already summarizes token information, giving us a natural similarity metric. We use key matrix K from the QKV attention formulation, and compute cosine similarity between token keys to determine how “similar” two tokens are.
     </p>
     <p>
       To determine which tokens to merge, the method performs bipartite soft matching. Tokens are partitioned into two interleaved sets <span class="math-inline">A</span> and <span class="math-inline">B</span>, and each token in <span class="math-inline">A</span> is paired with its most similar counterpart in <span class="math-inline">B</span>, producing a set of candidate merge edges. The top <span class="math-inline">r</span> highest-similarity pairs are selected, and each matched pair is merged by averaging their representations, weighted by token size.
@@ -303,7 +303,7 @@
       Token merging is particularly well-motivated for audio models such as ASTs, which apply self-attention over all input tokens. Unlike images, where the spatial resolution is typically bounded, the temporal dimension of audio can grow arbitrarily long depending on the dataset and task (e.g., long-form speech, environmental soundscapes). As sequence length increases, the quadratic cost of self-attention becomes a major bottleneck. Token merging provides a principled way to reduce the number of tokens, thereby decreasing computational cost and inference time while aiming to preserve task performance.
     </p>
     <p>
-      Beyond efficiency, audio signals exhibit a strongly hierarchical structure: phonemes compose words, words compose phrases, and phrases compose higher-level arguments or scenes. Because ToMe merges a fixed number of tokens at the end of each Transformer block, it progressively compresses the sequence in a way that naturally aligns with this hierarchy by collapsing redundant regions while retaining high-level information needed for classification.
+      Beyond efficiency, audio signals exhibit a strongly hierarchical structure: phonemes compose words, words compose phrases, and phrases compose higher-level arguments or scenes. Because token ToMe merges a fixed number of tokens at the end of each Transformer block, it progressively compresses the sequence in a way that naturally aligns with this hierarchy by collapsing redundant regions while retaining high-level information needed for classification.
     </p>
     <p>
       While ToMe has already been applied to ASTs <a href="#ref3">[3]</a>, existing approaches largely treat audio tokens in the same way as image patches. In the next section, we explore how adapting token merging more explicitly to audio (by introducing a novel inductive bias that favors temporally local structure) can better exploit the structure of spectrogram inputs.
@@ -361,9 +361,9 @@
       <li>16 kHz mono WAV files</li>
     </ul>
 
-    <h2>AudioSet (balanced split) <a href="#ref7">[7]</a></h2>
+    <h2>AudioSet<a href="#ref7">[7]</a></h2>
     <p>
-      AudioSet is a collection of human-labeled audio events released by Google, built from 10-second clips extracted from YouTube videos and labeled with a rich ontology of sound classes. We analyze the balanced split of this dataset, which balances samples across classes and contains:
+      AudioSet is a collection of human-labeled audio events released by Google, built from 10-second clips extracted from YouTube videos and labeled with a rich ontology of sound classes. We only analyzed the balanced split of this dataset, which balances samples across classes and contains:
     </p>
     <ul>
       <li>~18k training clips and ~17k evaluation clips (balanced across classes)</li>
