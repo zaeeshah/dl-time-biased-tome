@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <title>Time-Biased Token Merging for Audio Spectrogram Transformers</title>
 
+  <script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+    svg: { fontCache: 'global' }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+
   <style type="text/css">
     * {
       margin: 0;
@@ -289,10 +298,10 @@
       Because each global attention layer scales quadratically with the number of tokens, transformer models become increasingly expensive to run as input resolution or sequence length grows. Token merging <a href="#ref2">[2]</a> is a technique introduced to accelerate transformers by reducing the number of tokens passed through the network while preserving as much semantic information as possible.
     </p>
     <p>
-      After each transformer layer, a fixed number of tokens <span class="math-inline">r</span> are removed by merging them with their most similar neighbors, causing the sequence length to shrink gradually with depth. The transformer architecture already summarizes token information, giving us a natural similarity metric. We use key matrix K from the QKV attention formulation, and compute cosine similarity between token keys to determine how “similar” two tokens are.
+      After each transformer layer, a fixed number of tokens $r$ are removed by merging them with their most similar neighbors, causing the sequence length to shrink gradually with depth. The transformer architecture already summarizes token information, giving us a natural similarity metric. We use key matrix K from the QKV attention formulation, and compute cosine similarity between token keys to determine how “similar” two tokens are.
     </p>
     <p>
-      To determine which tokens to merge, the method performs bipartite soft matching. Tokens are partitioned into two interleaved sets <span class="math-inline">A</span> and <span class="math-inline">B</span>, and each token in <span class="math-inline">A</span> is paired with its most similar counterpart in <span class="math-inline">B</span>, producing a set of candidate merge edges. The top <span class="math-inline">r</span> highest-similarity pairs are selected, and each matched pair is merged by averaging their representations, weighted by token size.
+      To determine which tokens to merge, the method performs bipartite soft matching. Tokens are partitioned into two sets $A$ and $B$, and each token in $A$ is paired with its most similar counterpart in $B$, producing a set of candidate merge edges. The top $r$ highest-similarity pairs are selected, and each matched pair is merged by averaging their representations, weighted by token size.
     </p>
     <p>
       This procedure is extremely efficient, nearly as fast as simple pruning, yet preserves substantially more information, allowing transformers to operate with far fewer tokens while maintaining strong performance. In practice, because ASTs include a class token that is never merged, we require the class token plus at least one remaining patch token; otherwise, the model would lose all spatial information from the spectrogram.
@@ -315,34 +324,34 @@
       Because we operate on audio spectrograms rather than images, we hypothesize that merging based on standard cosine-based token similarity is insufficient for long sequences. While temporal information is embedded by positional encoding within each token and therefore not ignored by ToMe's similarity metric, the original formulation treats all token relationships symmetrically, without accounting for the fact that the time axis is disproportionately important in audio classification. This can lead to merging temporally distant regions (e.g., multiple occurrences of silence) that are similar in content but should ideally remain separate for downstream classification. To address this, we introduce a novel time-aware regularization term that biases token merging toward temporally local pairs.
     </p>
     <p>
-      Concretely, we adapt the bipartite soft matching from ToMe and define a time-weighted similarity score. Let <span class="math-inline">x ∈ ℝ<sup>B×T×C</sup></span> denote the sequence of token embeddings, where <span class="math-inline">T</span> is the number of tokens. At the input to the AST encoder, we assign each token a scalar time coordinate <span class="math-inline">t<sub>i</sub></span> corresponding to its normalized position in the sequence:
+      Concretely, we adapt the bipartite soft matching from ToMe and define a time-weighted similarity score. Let \( x \in \mathbb{R}^{B \times T \times C} \) denote the sequence of token embeddings, where $T$ is the number of tokens. At the input to the AST encoder, we assign each token a scalar time coordinate $t_i$ corresponding to its normalized position in the sequence:
     </p>
     <p class="indent">
-      <span class="math-inline">t<sub>i</sub> = i / (T − 1), &nbsp;&nbsp; i = 0, ..., T − 1, &nbsp;&nbsp; t<sub>i</sub> ∈ [0, 1]</span>
+      \[ t_i = \frac{i}{T - 1}, \qquad i = 0, \ldots, T-1 \]
     </p>
     <p>
-      These time coordinates are stored as an additional tensor <span class="math-inline">t ∈ ℝ<sup>B×T×1</sup></span>. During bipartite matching, we split the token sequence into sets A and B. We modify the cosine similarity scores between token keys
+      These time coordinates are stored as an additional tensor \( t \in \mathbb{R}^{B \times T \times 1} \). During bipartite matching, we split the token sequence into sets $A$ and $B$. We modify the cosine similarity scores between token keys
     </p>
     <p class="indent">
-      <span class="math-inline">s<sup>cos</sup><sub>ij</sub> = ⟨a<sub>i</sub>, b<sub>j</sub>⟩ / (||a<sub>i</sub>|| ||b<sub>j</sub>||)</span>
+      \[ s^{\mathrm{cos}}_{ij} = \frac{\langle a_i, b_j \rangle}{\|a_i\| \, \|b_j\|} \]
     </p>
     <p>
       by introducing a corresponding squared temporal distance:
     </p>
     <p class="indent">
-      <span class="math-inline">d<sup>time</sup><sub>ij</sub> = (t<sub>i</sub> − t<sub>j</sub>)<sup>2</sup></span>
+      \[ d^{\mathrm{time}}_{ij} = (t_i - t_j)^2 \]
     </p>
     <p>
       Our final time-weighted merging score is
     </p>
     <p class="indent">
-      <span class="math-inline">s<sub>ij</sub> = s<sup>cos</sup><sub>ij</sub> − λ d<sup>time</sup><sub>ij</sub></span>
+      \[ s_{ij} = s^{\mathrm{cos}}_{ij} - \lambda \, d^{\mathrm{time}}_{ij} \]
     </p>
     <p>
-      where <span class="math-inline">λ ≥ 0</span> is a hyperparameter controlling the strength of the temporal penalty. We then select the top-<span class="math-inline">r</span> pairs according to <span class="math-inline">s<sub>ij</sub></span> and merge them using the standard ToMe weighted-average merge operator. We update token time coordinates with the same rule (the merged time for a token is the size-weighted mean of the times of its constituent tokens), ensuring that each merged token retains a well-defined effective timestamp.
+      where \( \lambda \ge 0 \) is a hyperparameter controlling the strength of the temporal penalty. We then select the top-$r$ pairs according to $s_{ij}$ and merge them using the standard ToMe weighted-average merge operator. We update token time coordinates with the same rule (the merged time for a token is the size-weighted mean of the times of its constituent tokens), ensuring that each merged token retains a well-defined effective timestamp.
     </p>
     <p>
-      When <span class="math-inline">λ = 0</span>, our method reduces exactly to the original cosine-only ToMe; larger <span class="math-inline">λ</span> values increasingly discourage merges between tokens that are far apart in time. We expect the benefit of this regularization term to depend on the dataset and sequence length. For short utterances with relatively few tokens (e.g., single-word commands), most tokens belong to a single acoustic event, so temporal locality is less critical and the time penalty may have a limited effect. For longer clips with many tokens (e.g., environmental audio or multi-event recordings), there are more opportunities for erroneous long-range merges, and we hypothesize that the time-weighted objective will better preserve local temporal structure and thus yield larger performance gains.
+      When \( \lambda \ge 0 \), our method reduces exactly to the original cosine-only ToMe; larger $\lambda$ values increasingly discourage merges between tokens that are far apart in time. We expect the benefit of this regularization term to depend on the dataset and sequence length. For short utterances with relatively few tokens (e.g., single-word commands), most tokens belong to a single acoustic event, so temporal locality is less critical and the time penalty may have a limited effect. For longer clips with many tokens (e.g., environmental audio or multi-event recordings), there are more opportunities for erroneous long-range merges, and we hypothesize that the time-weighted objective will better preserve local temporal structure and thus yield larger performance gains.
     </p>
 
     <!-- Datasets -->
@@ -378,14 +387,31 @@
       We run the two different datasets through our modified architecture and check performance on classifying both datasets. For both datasets, we use the corresponding finetuned weights from the original AST paper <a href="#ref1">[1]</a> and simply modify the architecture with the ToMe blocks. This ensures that we have high accuracy and can analyze the effects of token merging.
     </p>
     <p>
-      To analyze whether adding the temporal penalty term improves the performance of the AST model on Speech Commands V2, we vary two values: <span class="math-inline">λ</span> and <span class="math-inline">r</span>. As discussed earlier, <span class="math-inline">λ</span> increases the temporal penalty, changing which tokens are merged. <span class="math-inline">r</span> controls the number of tokens merged for each of our 12 layers. Note that when <span class="math-inline">r = 0</span>, no tokens are merged, and the model behaves like the standard AST model. To evaluate the model's behavior on each combination of <span class="math-inline">λ</span> and <span class="math-inline">r</span>, we analyze the model's accuracy or mean average precision (depending on the dataset).
+      To analyze whether adding the temporal penalty term improves the performance of the AST model on Speech Commands V2, we vary two values: $\lambda$ and $r$. As discussed earlier, $\lambda$ increases the temporal penalty, changing which tokens are merged. $r$ controls the number of tokens merged for each of our 12 layers. Note that when $r = 0$, no tokens are merged, and the model behaves like the standard AST model. To evaluate the model's behavior on each combination of $\lambda$ and $r$, we analyze the model's accuracy or mean average precision (depending on the dataset).
     </p>
     <p>
-      For Speech Commands V2, we evaluated token-merging configurations across <span class="math-inline">λ ∈ {0, 1, 2, 3, 4}</span> and <span class="math-inline">r ∈ {0, 2, 4, 8}</span>. For this dataset, AST produces 144 tokens when no merging is applied (<span class="math-inline">r = 0</span>). To study a wide range of compression regimes, we evaluate <span class="math-inline">r = 2, 4,</span> and <span class="math-inline">8</span>, which merge 16.6%, 33.3%, and 66.7% of total tokens, respectively, by the end of the transformer layers. We test <span class="math-inline">λ</span> values from 1 to 4, ranging from a mild to a strong preference for merging temporally adjacent tokens. We use accuracy as the evaluation metric; the dataset is a balanced, closed-set classification task with one label per clip, and accuracy is consistent with how the AST paper reports results.
+      For Speech Commands V2, we evaluated token-merging configurations across 
+      \( \lambda \in \{0, 1, 2, 3, 4\} \) and 
+      \( r \in \{0, 2, 4, 8\} \). 
+      For this dataset, AST produces 144 tokens when no merging is applied 
+      \( r = 0 \). 
+      To study a wide range of compression regimes, we evaluate 
+      \( r = 2, 4 \) and \( 8 \), 
+      which merge 16.6%, 33.3%, and 66.7% of total tokens, respectively, by the end of the transformer layers. 
+      We test \( \lambda \) values from 1 to 4, ranging from a mild to a strong preference for merging temporally adjacent tokens. 
+      We use accuracy as the evaluation metric; the dataset is a balanced, closed-set classification task with one label per clip, and accuracy is consistent with how the AST paper reports results.
     </p>
+
     <p>
-      For AudioSet, as the dataset contains roughly ten times more input tokens per clip than Speech Commands V2, we scale up our <span class="math-inline">r</span> values by a factor of 10 to achieve a similar compression regime. Thus, for AudioSet, we evaluated <span class="math-inline">λ ∈ {0, 1, 2, 3, 4}</span> and <span class="math-inline">r ∈ {0, 20, 40, 80}</span>. We evaluate using mean average precision (mAP) and total speedup. mAP is well-suited for AudioSet's multi-label classification, measuring how well the model ranks true positives across all classes. This choice also aligns with the original AST paper, facilitating direct comparison with existing baselines.
+      For AudioSet, as the dataset contains roughly ten times more input tokens per clip than Speech Commands V2, we scale up our \( r \) values by a factor of 10 to achieve a similar compression regime. 
+      Thus, for AudioSet, we evaluated 
+      \( \lambda \in \{0, 1, 2, 3, 4\} \) and 
+      \( r \in \{0, 20, 40, 80\} \). 
+      We evaluate using mean average precision (mAP) and total speedup. 
+      mAP is well-suited for AudioSet's multi-label classification, measuring how well the model ranks true positives across all classes. 
+      This choice also aligns with the original AST paper, facilitating direct comparison with existing baselines.
     </p>
+
     <p>
       Note that prior work <a href="#ref3">[3]</a> already demonstrates that token merging yields significant speedups. Our focus is on whether adding the temporal penalty term can improve or preserve performance without substantially affecting these speedups.
     </p>
@@ -398,12 +424,12 @@
     <div class="figure">
       <img src="./images/speechcommands_results.png" alt="SpeechCommandsV2 results">
       <div class="figure-caption">
-        Figure 3: SpeechCommandsV2 accuracy as a function of <span class="math-inline">r</span> and <span class="math-inline">λ</span>.
+        Figure 3: SpeechCommandsV2 accuracy as a function of $r$ and $\lambda$.
       </div>
     </div>
 
     <p>
-      Figure 3 compares models trained with different time-penalty values <span class="math-inline">λ ∈ {1, 2, 3, 4}</span> against the baseline without a time penalty (<span class="math-inline">λ = 0</span>) as we vary the number of tokens removed per block <span class="math-inline">r</span>. Results are mixed, meaning the time penalty term here is ineffective. This suggests that on this dataset, additional temporal information beyond what is included in token embeddings does not contribute to additional benefit during token merging.
+      Figure 3 compares models trained with different time-penalty values \( \lambda \in \{1, 2, 3, 4\} \) against the baseline without a time penalty ($\lambda = 0$) as we vary the number of tokens removed per block $r$. Results are mixed, meaning the time penalty term here is ineffective. This suggests that on this dataset, additional temporal information beyond what is included in token embeddings does not contribute to additional benefit during token merging.
     </p>
 
     <h2>AudioSet</h2>
@@ -411,21 +437,49 @@
     <div class="figure">
       <img src="./images/audioset_results.png" alt="AudioSet results">
       <div class="figure-caption">
-        Figure 4: AudioSet mAP as a function of <span class="math-inline">r</span> and <span class="math-inline">λ</span>. <span class="math-inline">λ = 2</span> consistently performs best.
+        Figure 4: AudioSet mAP as a function of $r$ and $\lambda$. $\lambda = 2$ consistently performs best.
       </div>
     </div>
 
     <p>
-      Figure 4 compares models with different time-penalty values <span class="math-inline">λ ∈ {1, 2, 3, 4}</span> against the baseline without a time penalty (<span class="math-inline">λ = 0</span>) on AudioSet as we vary the number of tokens removed per block <span class="math-inline">r</span>. Across all compression levels, <span class="math-inline">λ = 2</span> consistently achieves the highest mean average precision (mAP), with the gap over <span class="math-inline">λ = 0</span> growing as more tokens are merged. <span class="math-inline">λ = 1</span> is the second-best setting, with <span class="math-inline">λ = 3</span> and <span class="math-inline">λ = 4</span> following respectively.
-    </p>
-    <p>
-      These results suggest that a moderate time penalty (<span class="math-inline">λ = 2</span>) strikes the best balance between temporal proximity and cosine similarity on AudioSet. As <span class="math-inline">λ</span> becomes too large, the time term dominates over the cosine similarity, causing the merge decisions to depend almost entirely on temporal distance, leading to a sharper drop in accuracy as <span class="math-inline">r</span> increases.
-    </p>
-    <p>
-      To verify that the time penalty meaningfully influences merge selection, we measured the fraction of merged token pairs that differ from the baseline merges produced with <span class="math-inline">λ = 0</span>. For nonzero <span class="math-inline">λ</span> values, this fraction ranged from 76.7% to 85.1%, indicating that the temporal penalty substantially reshapes the merge decisions rather than leaving them unchanged.
+      Figure 4 compares models with different time-penalty values 
+      \( \lambda \in \{1, 2, 3, 4\} \) 
+      against the baseline without a time penalty 
+      \( \lambda = 0 \) 
+      on AudioSet as we vary the number of tokens removed per block \( r \). 
+      Across all compression levels, 
+      \( \lambda = 2 \) 
+      consistently achieves the highest mean average precision (mAP), with the gap over 
+      \( \lambda = 0 \) 
+      growing as more tokens are merged. 
+      \( \lambda = 1 \) 
+      is the second-best setting, with 
+      \( \lambda = 3 \) 
+      and 
+      \( \lambda = 4 \) 
+      following respectively.
     </p>
 
-    <h2>Effect of λ on Speedup</h2>
+    <p>
+      These results suggest that a moderate time penalty 
+      \( \lambda = 2 \) 
+      strikes the best balance between temporal proximity and cosine similarity on AudioSet. 
+      As \( \lambda \) becomes too large, the time term dominates over the cosine similarity, 
+      causing the merge decisions to depend almost entirely on temporal distance, 
+      leading to a sharper drop in accuracy as \( r \) increases.
+    </p>
+
+    <p>
+      To verify that the time penalty meaningfully influences merge selection, 
+      we measured the fraction of merged token pairs that differ from the baseline merges 
+      produced with \( \lambda = 0 \). 
+      For nonzero \( \lambda \) values, this fraction ranged from 76.7% to 85.1%, 
+      indicating that the temporal penalty substantially reshapes the merge decisions 
+      rather than leaving them unchanged.
+    </p>
+
+
+    <h2>Effect of $\lambda$ on Speedup</h2>
 
     <div class="figure">
       <img src="./images/speedup_results.png" alt="Speedup results">
@@ -435,7 +489,7 @@
     </div>
 
     <p>
-      As shown in Figure 5, introducing the temporal penalty term (<span class="math-inline">λ > 0</span>) has little effect on the throughput gains from token merging: all <span class="math-inline">λ</span> values track the <span class="math-inline">λ = 0</span> baseline closely. On AudioSet, this difference is even harder to distinguish, likely because the much larger number of tokens dominates the computation. Overall, as the number of input tokens grows, the cost of computing the temporal penalty term becomes negligible, so speedup is determined almost entirely by how many tokens are removed.
+      As shown in Figure 5, introducing the temporal penalty term ($\lambda > 0$) has little effect on the throughput gains from token merging: all $\lambda$ values track the $\lambda = 0$ baseline closely. On AudioSet, this difference is even harder to distinguish, likely because the much larger number of tokens dominates the computation. Overall, as the number of input tokens grows, the cost of computing the temporal penalty term becomes negligible, so speedup is determined almost entirely by how many tokens are removed.
     </p>
 
     <!-- Discussion -->
