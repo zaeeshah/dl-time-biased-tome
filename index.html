@@ -260,7 +260,7 @@
     <!-- Introduction -->
     <h1 id="introduction">Introduction</h1>
     <p>
-      Audio classification is a pivotal task in modern machine learning, supporting applications such as sound event detection, speech recognition, and music tagging. Recent progress in this space has been driven by transformer-based models, particularly Audio Spectrogram Transformers (ASTs) <a href="#ref1">[1]</a>, which adapt the Vision Transformer architecture to operate directly on spectrogram inputs. Separately, token merging <a href="#ref2">[2]</a> has emerged as a general technique for accelerating transformers by condensing similar tokens between layers, allowing models to process fewer tokens while preserving performance. In principle, token merging can be applied to ASTs to reduce computational cost.
+      Audio classification is a pivotal task in modern machine learning, supporting applications such as sound event detection, speech recognition, and music tagging. Recent progress in this space has been driven by transformer-based models, particularly Audio Spectrogram Transformers (ASTs) <a href="#ref1">[1]</a>, which adapt the Vision Transformer <a href="#ref2">[2]</a> architecture to operate directly on spectrogram inputs. Separately, token merging <a href="#ref3">[3]</a> has emerged as a general technique for accelerating transformers by condensing similar tokens between layers, allowing models to process fewer tokens while preserving performance. In principle, token merging can be applied to ASTs to reduce computational cost.
     </p>
     <p>
       However, spectrograms are fundamentally different from images, and these differences affect how and when tokens should be merged. In image classification, spatial transformations such as flipping or reordering regions often preserve semantic meaning. However, in audio, the temporal axis carries inherent directionality; events cannot be reversed or substantially shifted without altering their interpretation. As a result, directly applying image-based token merging to spectrograms may lead to merging temporally distant regions that should remain distinct. To address this, we introduce a time-aware bias into token merging to better align the technique with the structure of audio data and improve performance on AST-based classification tasks.
@@ -294,7 +294,7 @@
     </div>
 
     <p>
-      Because each global attention layer scales quadratically with the number of tokens, transformer models become increasingly expensive to run as input resolution or sequence length grows. Token merging <a href="#ref2">[2]</a> is a technique introduced to accelerate transformers by reducing the number of tokens passed through the network while preserving as much semantic information as possible.
+      Because each global attention layer <a href="#ref4">[4]</a> scales quadratically with the number of tokens, transformer models become increasingly expensive to run as input resolution or sequence length grows. Token merging (ToMe) <a href="#ref3">[3]</a> is a technique introduced to accelerate transformers by reducing the number of tokens passed through the network while preserving as much semantic information as possible.
     </p>
     <p>
       After each transformer layer, a fixed number of tokens $r$ are removed by merging them with their most similar neighbors, causing the sequence length to shrink gradually with depth. The transformer architecture already summarizes token information, giving us a natural similarity metric. We use key matrix K from the QKV attention formulation, and compute cosine similarity between token keys to determine how “similar” two tokens are.
@@ -314,7 +314,7 @@
       Beyond efficiency, audio signals exhibit a strongly hierarchical structure: phonemes compose words, words compose phrases, and phrases compose higher-level arguments or scenes. Because token ToMe merges a fixed number of tokens at the end of each Transformer block, it progressively compresses the sequence in a way that naturally aligns with this hierarchy by collapsing redundant regions while retaining high-level information needed for classification.
     </p>
     <p>
-      While ToMe has already been applied to ASTs <a href="#ref3">[3]</a>, existing approaches largely treat audio tokens in the same way as image patches. In the next section, we explore how adapting token merging more explicitly to audio (by introducing a novel inductive bias that favors temporally local structure) can better exploit the structure of spectrogram inputs.
+      While ToMe has already been applied to ASTs <a href="#ref5">[5]</a>, existing approaches largely treat audio tokens in the same way as image patches. In the next section, we explore how adapting token merging more explicitly to audio (by introducing a novel inductive bias that favors temporally local structure) can better exploit the structure of spectrogram inputs.
     </p>
 
     <!-- Proposed Change -->
@@ -529,19 +529,19 @@
       </div>
 
       <div class="ref-item" id="ref2">
-        [2] D. Bolya, et al. <em>Token Merging: Your ViT But Faster</em>, 2023.
-      </div>
+        [2] A. Dosovitskiy, et al. <em>An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale</em>, 2020.
+        </div>
 
       <div class="ref-item" id="ref3">
-        [3] S. Behra, et al. <em>FastAST: Accelerating Audio Spectrogram Transformer via Token Merging and Cross-Model Knowledge Distillation</em>, 2024.
+         [3] D. Bolya, et al. <em>Token Merging: Your ViT But Faster</em>, 2023.
       </div>
 
       <div class="ref-item" id="ref4">
-        [4] A. Dosovitskiy, et al. <em>An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale</em>, 2020.
+        [4] A. Vaswani, et al. <em>Attention Is All You Need</em>, 2017.
       </div>
 
       <div class="ref-item" id="ref5">
-        [5] A. Vaswani, et al. <em>Attention Is All You Need</em>, 2017.
+        [5] S. Behra, et al. <em>FastAST: Accelerating Audio Spectrogram Transformer via Token Merging and Cross-Model Knowledge Distillation</em>, 2024.
       </div>
 
       <div class="ref-item" id="ref6">
