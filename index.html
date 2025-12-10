@@ -291,7 +291,7 @@
     <div class="figure">
       <img src="./images/token_merging_vits.png" alt="Token merging for ViTs">
       <div class="figure-caption">
-        Figure 2: Token merging for ViTs: tokens form bipartite sets and are merged along high-similarity edges <a href="#ref2">[2]</a>.
+        Figure 2: Token merging for ViTs: tokens form bipartite sets and are merged along high-similarity edges <a href="#ref3">[3]</a>.
       </div>
     </div>
 
@@ -313,7 +313,7 @@
       Token merging is particularly well-motivated for audio models such as ASTs, which apply self-attention over all input tokens. Unlike images, where the spatial resolution is typically bounded, the temporal dimension of audio can grow arbitrarily long depending on the dataset and task (e.g., long-form speech, environmental soundscapes). As sequence length increases, the quadratic cost of self-attention becomes a major bottleneck. Token merging provides a principled way to reduce the number of tokens, thereby decreasing computational cost and inference time while aiming to preserve task performance.
     </p>
     <p>
-      Beyond efficiency, audio signals exhibit a strongly hierarchical structure: phonemes compose words, words compose phrases, and phrases compose higher-level arguments or scenes. Because token ToMe merges a fixed number of tokens at the end of each Transformer block, it progressively compresses the sequence in a way that naturally aligns with this hierarchy by collapsing redundant regions while retaining high-level information needed for classification.
+      Beyond efficiency, audio signals exhibit a strongly hierarchical structure: phonemes compose words, words compose phrases, and phrases compose higher-level arguments or scenes. Because ToMe merges a fixed number of tokens at the end of each Transformer block, it progressively compresses the sequence in a way that naturally aligns with this hierarchy by collapsing redundant regions while retaining high-level information needed for classification.
     </p>
     <p>
       While ToMe has already been applied to ASTs <a href="#ref5">[5]</a>, existing approaches largely treat audio tokens in the same way as image patches. In the next section, we explore how adapting token merging more explicitly to audio (by introducing a novel inductive bias that favors temporally local structure) can better exploit the structure of spectrogram inputs.
@@ -352,7 +352,7 @@
       where \( \lambda \ge 0 \) is a hyperparameter controlling the strength of the temporal penalty. We then select the top-$r$ pairs according to $s_{ij}$ and merge them using the standard ToMe weighted-average merge operator. We update token time coordinates with the same rule (the merged time for a token is the size-weighted mean of the times of its constituent tokens), ensuring that each merged token retains a well-defined effective timestamp.
     </p>
     <p>
-      When \( \lambda \ge 0 \), our method reduces exactly to the original cosine-only ToMe; larger $\lambda$ values increasingly discourage merges between tokens that are far apart in time. We expect the benefit of this regularization term to depend on the dataset and sequence length. For short utterances with relatively few tokens (e.g., single-word commands), most tokens belong to a single acoustic event, so temporal locality is less critical and the time penalty may have a limited effect. For longer clips with many tokens (e.g., environmental audio or multi-event recordings), there are more opportunities for erroneous long-range merges, and we hypothesize that the time-weighted objective will better preserve local temporal structure and thus yield larger performance gains.
+      When \( \lambda = 0 \), our method reduces exactly to the original cosine-only ToMe; larger $\lambda$ values increasingly discourage merges between tokens that are far apart in time. We expect the benefit of this regularization term to depend on the dataset and sequence length. For short utterances with relatively few tokens (e.g., single-word commands), most tokens belong to a single acoustic event, so temporal locality is less critical and the time penalty may have a limited effect. For longer clips with many tokens (e.g., environmental audio or multi-event recordings), there are more opportunities for erroneous long-range merges, and we hypothesize that the time-weighted objective will better preserve local temporal structure and thus yield larger performance gains.
     </p>
 
     <!-- Datasets -->
