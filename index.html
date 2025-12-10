@@ -403,7 +403,7 @@
     </div>
 
     <p>
-      Figure 3 compares models trained with different time-penalty values <span class="math-inline">λ ∈ {1, 2, 3, 4}</span> against the baseline without a time penalty (<span class="math-inline">λ = 0</span>) as we vary the number of tokens removed per block <span class="math-inline">r</span>. Results are mixed, and the time penalty term does not consistently improve performance. This suggests that on this dataset, additional temporal information beyond what is already included in token embeddings does not provide extra benefit during token merging.
+      Figure 3 compares models trained with different time-penalty values <span class="math-inline">λ ∈ {1, 2, 3, 4}</span> against the baseline without a time penalty (<span class="math-inline">λ = 0</span>) as we vary the number of tokens removed per block <span class="math-inline">r</span>. Results are mixed, meaning the time penalty term here is ineffective. This suggests that on this dataset, additional temporal information beyond what is included in token embeddings does not contribute to additional benefit during token merging.
     </p>
 
     <h2>AudioSet</h2>
@@ -419,7 +419,7 @@
       Figure 4 compares models with different time-penalty values <span class="math-inline">λ ∈ {1, 2, 3, 4}</span> against the baseline without a time penalty (<span class="math-inline">λ = 0</span>) on AudioSet as we vary the number of tokens removed per block <span class="math-inline">r</span>. Across all compression levels, <span class="math-inline">λ = 2</span> consistently achieves the highest mean average precision (mAP), with the gap over <span class="math-inline">λ = 0</span> growing as more tokens are merged. <span class="math-inline">λ = 1</span> is the second-best setting, with <span class="math-inline">λ = 3</span> and <span class="math-inline">λ = 4</span> following respectively.
     </p>
     <p>
-      These results suggest that a moderate time penalty (<span class="math-inline">λ = 2</span>) strikes the best balance between temporal proximity and cosine similarity on AudioSet. As <span class="math-inline">λ</span> becomes too large, the time term dominates the energy, effectively down-weighting the cosine similarity and causing the merge decisions to depend almost entirely on temporal distance, which leads to a sharper drop in accuracy as <span class="math-inline">r</span> increases.
+      These results suggest that a moderate time penalty (<span class="math-inline">λ = 2</span>) strikes the best balance between temporal proximity and cosine similarity on AudioSet. As <span class="math-inline">λ</span> becomes too large, the time term dominates over the cosine similarity, causing the merge decisions to depend almost entirely on temporal distance, leading to a sharper drop in accuracy as <span class="math-inline">r</span> increases.
     </p>
     <p>
       To verify that the time penalty meaningfully influences merge selection, we measured the fraction of merged token pairs that differ from the baseline merges produced with <span class="math-inline">λ = 0</span>. For nonzero <span class="math-inline">λ</span> values, this fraction ranged from 76.7% to 85.1%, indicating that the temporal penalty substantially reshapes the merge decisions rather than leaving them unchanged.
@@ -435,7 +435,7 @@
     </div>
 
     <p>
-      As shown in Figure 5, introducing the temporal penalty term (<span class="math-inline">λ > 0</span>) has little effect on the throughput gains from token merging: all <span class="math-inline">λ</span> values track the <span class="math-inline">λ = 0</span> baseline closely. On AudioSet, this difference is even harder to distinguish, likely because the much larger number of tokens dominates the computation. Overall, as the number of input tokens grows, the cost of computing the temporal penalty term is amortized and becomes negligible, so speedup is determined almost entirely by how many tokens are removed.
+      As shown in Figure 5, introducing the temporal penalty term (<span class="math-inline">λ > 0</span>) has little effect on the throughput gains from token merging: all <span class="math-inline">λ</span> values track the <span class="math-inline">λ = 0</span> baseline closely. On AudioSet, this difference is even harder to distinguish, likely because the much larger number of tokens dominates the computation. Overall, as the number of input tokens grows, the cost of computing the temporal penalty term becomes negligible, so speedup is determined almost entirely by how many tokens are removed.
     </p>
 
     <!-- Discussion -->
@@ -444,27 +444,27 @@
       In this project, we explored how token merging can be better adapted to audio spectrogram transformers. Although token merging is well established in vision models, its application to audio remains less examined, with prior work largely treating audio tokens like image patches. Our contribution is a time-aware similarity metric that discourages merges between temporally distant tokens, reflecting the heightened importance of temporal structure in audio tasks. Through our experiments, we observed that the time-weighted merging scheme behaves comparably to standard ToMe on short, single-word utterances such as Speech Commands V2, but provides clearer benefits on longer, multi-event audio clips such as those in AudioSet.
     </p>
     <p>
-      Our time-based merging strategy implicitly assumes that temporal position is a particularly meaningful feature for classification. This assumption introduces a dataset-dependent limitation: the method should be most effective on long datasets, where time is crucial for distinguishing between semantically different regions of similar frequencies. However, the longest dataset our experiments were constrained to was AudioSet (10-second clips), which may underrepresent the full benefit of time-based merging. While AudioSet shows a concrete trend that does better with time bias, we anticipate that datasets of longer-form audio, such as music, would benefit even more due to the greater significance of temporal structure.
+      Our time-based merging strategy implicitly assumes that temporal position is a particularly meaningful feature for classification. This assumption introduces a dataset-dependent limitation: the method should be most effective on long datasets, where time is crucial for distinguishing between semantically different regions of similar frequencies. However, the longest dataset our experiments were constrained to was AudioSet (10-second clips), which may underrepresent the full benefit of time-based merging. While AudioSet shows a concrete trend that does better with time bias, we anticipate that datasets of longer-form audio, such as music, would benefit even more, due to the greater significance of temporal structure.
     </p>
 
     <!-- Future Directions -->
     <h2 id="future-directions">Future Directions</h2>
     <ul>
       <li>
-        <strong>Energy-based merging.</strong> Recently, energy-based token merging metrics <a href="#ref8">[8]</a> have been explored. It would be interesting to introduce a temporal bias directly into the learned energy function.
+        <strong>Energy-based merging.</strong> Recently, energy-based token merging metrics <a href="#ref8">[8]</a> have been explored, and it would be interesting to introduce a temporal bias directly into the learned energy function.
       </li>
       <li>
-        <strong>Music information retrieval.</strong> Applying time-aware token merging to music may perform particularly well, since long, hierarchical inputs are common in music.
+        <strong>Music information retrieval.</strong> Applying time-aware token merging to music may potentially perform very well, since long, hierarchical inputs are common in music.
       </li>
       <li>
-        <strong>Time penalty during model training.</strong> Because of time constraints for training large ASTs, we did not train a model with this architecture from scratch. Investigating the effect of this time penalty factor during training may yield interesting results.
+        <strong>Time penalty during model training.</strong> Because of the time constraints of training these large ASTs for audio processing, we did not train a model with this architecture from scratch. Investigating the effect of this time penalty factor during training may yield interesting results.
       </li>
       <li>
-        <strong>Merging vs. pruning.</strong> There are many ways to reduce the number of tokens passed into later transformer layers. Besides merging (which we analyze), pruning (removing tokens) or hybrid strategies are possible. It would be interesting to investigate the effect of this time bias on token pruning and see whether it performs differently from merging.
+        <strong>Merging vs. pruning.</strong>There are many ways to reduce the number of tokens passed into a further layer of a transformer. Among these are merging (which we analyze) and pruning (removing the tokens) or a mixture of both. It would be interesting to investigate the effect of this time bias on token pruning and see if it performs any differently from merging. 
       </li>
     </ul>
     <p>
-      Overall, this work establishes a foundation for incorporating temporal biases into token merging for audio models, with ample room to extend these ideas to longer-form datasets and more sophisticated merging strategies.
+      This work establishes a foundation for incorporating temporal biases into token merging for audio models, with ample room to extend these ideas to longer-form datasets and more sophisticated merging strategies.
     </p>
 
     <!-- References -->
